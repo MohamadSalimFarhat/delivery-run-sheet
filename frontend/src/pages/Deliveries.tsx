@@ -32,7 +32,7 @@ export default function Deliveries() {
           .select('*')
           .order('status', { ascending: false })
           .order('created_at', { ascending: false }),
-        supabase.from('profiles').select('id, display_name, role, message_template'),
+        supabase.from('profiles').select('id, display_name, role'),
       ])
 
       if (cancelled) return

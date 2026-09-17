@@ -69,9 +69,20 @@ grant insert on public.deliveries to authenticated;
 -- request of any shape can promote a driver to dispatcher.
 grant update (display_name, message_template) on public.profiles to authenticated;
 
--- Assigning a driver, and marking delivered. The customer's name, phone and
--- address are absent, so they cannot be edited after the delivery is created.
-grant update (driver_id, status) on public.deliveries to authenticated;
+-- Assigning a driver, marking delivered, and correcting the customer details
+-- when the dispatcher mistyped something.
+--
+-- Note that grants apply to the `authenticated` role, which covers BOTH of our
+-- roles - they cannot tell a dispatcher from a driver. On its own this would
+-- let a driver rewrite the address in the same statement that marks a delivery
+-- delivered. The guard trigger further down is what prevents that.
+grant update (
+    driver_id,
+    status,
+    customer_name,
+    customer_phone,
+    address
+) on public.deliveries to authenticated;
 
 -- Nobody is granted delete on anything.
 
@@ -196,17 +207,54 @@ create trigger deliveries_stamp_delivered_at
     execute function public.stamp_delivered_at();
 
 -- ---------------------------------------------------------------------------
+-- Only a dispatcher corrects customer details.
+--
+-- The column grants above cannot express this, because both of our roles are
+-- the same database role. A policy cannot express it either: WITH CHECK only
+-- sees the new row, so it cannot tell whether a column changed. Comparing OLD
+-- with NEW needs a trigger.
+--
+-- Without this, a driver marking a delivery delivered could rewrite the
+-- customer's name, phone and address in the same statement.
+-- ---------------------------------------------------------------------------
+create or replace function public.guard_customer_details()
+returns trigger
+language plpgsql
+set search_path = ''
+as $fn$
+begin
+    if (new.customer_name, new.customer_phone, new.address)
+        is distinct from (old.customer_name, old.customer_phone, old.address)
+       and public.current_user_role() <> 'dispatcher'
+    then
+        raise exception 'Only a dispatcher can change customer details';
+    end if;
+
+    return new;
+end;
+$fn$;
+
+drop trigger if exists deliveries_guard_customer_details on public.deliveries;
+create trigger deliveries_guard_customer_details
+    before update on public.deliveries
+    for each row
+    execute function public.guard_customer_details();
+
+-- ---------------------------------------------------------------------------
 -- Tell the Supabase API layer to pick up the new privileges straight away,
 -- rather than waiting for its cache to refresh on its own.
 -- ---------------------------------------------------------------------------
 notify pgrst, 'reload schema';
 
 -- ---------------------------------------------------------------------------
--- Check: what `authenticated` ended up with. Expect exactly these seven rows,
+-- Check: what `authenticated` ended up with. Expect exactly these ten rows,
 -- and nothing at all for anon.
 --
 --   authenticated | deliveries | INSERT | (whole table)
 --   authenticated | deliveries | SELECT | (whole table)
+--   authenticated | deliveries | UPDATE | address
+--   authenticated | deliveries | UPDATE | customer_name
+--   authenticated | deliveries | UPDATE | customer_phone
 --   authenticated | deliveries | UPDATE | driver_id
 --   authenticated | deliveries | UPDATE | status
 --   authenticated | profiles   | SELECT | (whole table)

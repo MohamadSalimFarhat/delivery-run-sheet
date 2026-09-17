@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import DeliveryMap from '../components/DeliveryMap'
+import EditDeliveryForm from '../components/EditDeliveryForm'
 import StatusBadge from '../components/StatusBadge'
 import { formatPhone } from '../lib/phone'
 import { supabase } from '../lib/supabase'
@@ -41,7 +42,7 @@ export default function DeliveryDetail() {
         // not an error. For a driver looking at someone else's delivery, the
         // policy means the row genuinely does not exist.
         supabase.from('deliveries').select('*').eq('id', id ?? '').maybeSingle(),
-        supabase.from('profiles').select('id, display_name, role, message_template'),
+        supabase.from('profiles').select('id, display_name, role'),
       ])
 
       if (cancelled) return
@@ -144,17 +145,15 @@ export default function DeliveryDetail() {
   const selectedDriver = pickedDriver ?? savedDriver
   const hasUnsavedChange = selectedDriver !== savedDriver
 
-  // The message is written in the assigned driver's voice, using their own
-  // display name and template, no matter who is looking at the page. Until a
-  // driver is assigned there is nobody to speak for, so it falls back to the
-  // person viewing it.
-  const messageAuthor =
-    people.find((person) => person.id === delivery.driver_id) ?? profile
+  // Only the driver doing the delivery messages the customer, and always in
+  // their own words. A dispatcher does not send "I'm on my way" about a trip
+  // they are not making, so they get no button at all.
+  const canMessageCustomer = isMine && profile !== null
 
-  const whatsappMessage = messageAuthor
-    ? buildMessage(messageAuthor.message_template, {
+  const whatsappMessage = canMessageCustomer
+    ? buildMessage(profile.message_template, {
         customer: delivery.customer_name,
-        driver: messageAuthor.display_name,
+        driver: profile.display_name,
         address: delivery.address,
       })
     : null
@@ -198,7 +197,13 @@ export default function DeliveryDetail() {
         </dl>
 
         <div className="mt-6">
-          <DeliveryMap deliveryId={delivery.id} />
+          {/* Keyed by the address so correcting it remounts the map with a
+              clean slate, rather than leaving the old picture on screen. */}
+          <DeliveryMap
+            key={delivery.address}
+            deliveryId={delivery.id}
+            address={delivery.address}
+          />
         </div>
       </div>
 
@@ -222,6 +227,15 @@ export default function DeliveryDetail() {
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
           {actionError}
         </p>
+      )}
+
+      {/* Dispatcher: fix what was mistyped, while still pending. */}
+      {isDispatcher && isPending && (
+        <EditDeliveryForm
+          delivery={delivery}
+          busy={busy}
+          onSave={applyChange}
+        />
       )}
 
       {/* Dispatcher: assign or reassign, but only while still pending. */}

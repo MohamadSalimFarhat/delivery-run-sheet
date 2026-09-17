@@ -9,15 +9,11 @@ export type Profile = {
   created_at: string
 }
 
-/**
- * Just enough of a profile to show a name, fill the assign dropdown, and
- * build the WhatsApp message in the assigned driver's own words.
- */
+/** Just enough of a profile to show a name and fill the assign dropdown. */
 export type PersonSummary = {
   id: string
   display_name: string
   role: Role
-  message_template: string
 }
 
 export type DeliveryStatus = 'pending' | 'delivered'

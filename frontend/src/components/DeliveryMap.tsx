@@ -6,7 +6,17 @@ import { supabase } from '../lib/supabase'
  * cannot send an Authorization header, and the endpoint requires one. So the
  * image is fetched with the session token, then shown from an object URL.
  */
-export default function DeliveryMap({ deliveryId }: { deliveryId: string }) {
+type Props = {
+  deliveryId: string
+  /**
+   * Not sent for the server to use - it looks the address up itself. It is
+   * here only to change the URL when the address changes, so the browser's
+   * hour-long cache cannot keep showing a map of the old, mistyped address.
+   */
+  address: string
+}
+
+export default function DeliveryMap({ deliveryId, address }: Props) {
   const [src, setSrc] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -24,7 +34,8 @@ export default function DeliveryMap({ deliveryId }: { deliveryId: string }) {
       }
 
       const response = await fetch(
-        `/api/map?id=${encodeURIComponent(deliveryId)}`,
+        `/api/map?id=${encodeURIComponent(deliveryId)}` +
+          `&v=${encodeURIComponent(address)}`,
         { headers: { Authorization: `Bearer ${token}` } },
       )
 
@@ -62,7 +73,7 @@ export default function DeliveryMap({ deliveryId }: { deliveryId: string }) {
       // Object URLs are held by the browser until explicitly released.
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
-  }, [deliveryId])
+  }, [deliveryId, address])
 
   if (error) {
     return (
