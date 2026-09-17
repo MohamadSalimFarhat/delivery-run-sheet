@@ -167,7 +167,10 @@ export default function DeliveryDetail() {
   // Only the driver doing the delivery messages the customer, and always in
   // their own words. A dispatcher does not send "I'm on my way" about a trip
   // they are not making, so they get no button at all.
-  const canMessageCustomer = isMine && profile !== null
+  //
+  // It also goes once delivered: the message is about being on the way, which
+  // stops being true the moment the order is handed over.
+  const canMessageCustomer = isMine && isPending && profile !== null
 
   const whatsappMessage = canMessageCustomer
     ? buildMessage(profile.message_template, {
