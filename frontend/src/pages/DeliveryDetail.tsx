@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
+import BackToDeliveries from '../components/BackToDeliveries'
 import DeliveryMap from '../components/DeliveryMap'
 import EditDeliveryForm from '../components/EditDeliveryForm'
 import StatusBadge from '../components/StatusBadge'
@@ -121,25 +122,25 @@ export default function DeliveryDetail() {
 
   if (loadError) {
     return (
-      <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-        {loadError}
-      </p>
+      <div className="space-y-6">
+        <BackToDeliveries />
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          {loadError}
+        </p>
+      </div>
     )
   }
 
   if (!delivery) {
     return (
-      <div>
-        <h1 className="text-xl font-semibold">Delivery not found</h1>
-        <p className="mt-2 text-sm text-slate-500">
-          This delivery does not exist, or it is not one of yours.
-        </p>
-        <Link
-          to="/deliveries"
-          className="mt-6 inline-block text-sm font-medium text-blue-600 underline"
-        >
-          Back to deliveries
-        </Link>
+      <div className="space-y-6">
+        <BackToDeliveries />
+        <div className="rounded-lg border border-slate-200 bg-white p-6">
+          <h1 className="text-lg font-semibold">Delivery not found</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            This delivery does not exist, or it is not one of yours.
+          </p>
+        </div>
       </div>
     )
   }
@@ -171,12 +172,7 @@ export default function DeliveryDetail() {
 
   return (
     <div className="space-y-6">
-      <Link
-        to="/deliveries"
-        className="text-sm font-medium text-blue-600 underline"
-      >
-        Back to deliveries
-      </Link>
+      <BackToDeliveries />
 
       <div className="rounded-lg border border-slate-200 bg-white p-6">
         <div className="flex items-start justify-between gap-4">
