@@ -1,0 +1,24 @@
+# --- Secrets: never commit these ---
+.env
+.env.*
+!.env.example
+
+# --- Frontend (Node / Vite) ---
+node_modules/
+dist/
+.vite/
+*.local
+
+# --- Backend (Java / Maven) ---
+target/
+*.class
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# The assessment brief itself — kept local, not published
+Technical-assessment.pdf
