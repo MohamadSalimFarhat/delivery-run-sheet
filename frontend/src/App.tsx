@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
+import RequireAuth from './components/RequireAuth'
 import Deliveries from './pages/Deliveries'
 import DeliveryDetail from './pages/DeliveryDetail'
 import Login from './pages/Login'
@@ -10,11 +11,13 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
 
-      {/* Pages that sit inside the header/nav shell. */}
-      <Route element={<Layout />}>
-        <Route path="/deliveries" element={<Deliveries />} />
-        <Route path="/deliveries/:id" element={<DeliveryDetail />} />
-        <Route path="/settings" element={<Settings />} />
+      {/* Everything below needs a signed-in user with a profile. */}
+      <Route element={<RequireAuth />}>
+        <Route element={<Layout />}>
+          <Route path="/deliveries" element={<Deliveries />} />
+          <Route path="/deliveries/:id" element={<DeliveryDetail />} />
+          <Route path="/settings" element={<Settings />} />
+        </Route>
       </Route>
 
       {/* Anything else, including "/", goes to the run sheet. */}
