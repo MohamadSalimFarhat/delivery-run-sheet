@@ -123,7 +123,7 @@ export default function DeliveryDetail() {
 
   if (loadError) {
     return (
-      <div className="space-y-6">
+      <div className="mx-auto max-w-3xl space-y-6">
         <BackToDeliveries />
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
           {loadError}
@@ -134,7 +134,7 @@ export default function DeliveryDetail() {
 
   if (!delivery) {
     return (
-      <div className="space-y-6">
+      <div className="mx-auto max-w-3xl space-y-6">
         <BackToDeliveries />
         <div className="rounded-lg border border-slate-200 bg-white p-6">
           <h1 className="text-lg font-semibold">Delivery not found</h1>
@@ -189,7 +189,7 @@ export default function DeliveryDetail() {
     : null
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6">
       <BackToDeliveries />
 
       <div className="rounded-lg border border-slate-200 bg-white p-6">

@@ -56,8 +56,3 @@ export function parseLocation(input: string): Coordinates | null {
 export function isShortenedLink(input: string): boolean {
   return /^https?:\/\/\S+/i.test(input.trim()) && parseLocation(input) === null
 }
-
-/** Six decimal places is about 10cm. More than that is noise. */
-export function formatCoordinates({ latitude, longitude }: Coordinates) {
-  return `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-}

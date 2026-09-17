@@ -6,6 +6,32 @@ import StatusBadge from '../components/StatusBadge'
 import { supabase } from '../lib/supabase'
 import type { Delivery, PersonSummary } from '../lib/types'
 
+function EyeIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className="h-3.5 w-3.5"
+    >
+      <path d="M10 4c-4 0-7.2 3.2-8 5.6-.1.3-.1.5 0 .8C2.8 12.8 6 16 10 16s7.2-3.2 8-5.6c.1-.3.1-.5 0-.8C17.2 7.2 14 4 10 4Zm0 9a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z" />
+    </svg>
+  )
+}
+
+function PencilIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className="h-3.5 w-3.5"
+    >
+      <path d="M13.6 3.2a1.7 1.7 0 0 1 2.4 2.4l-.9.9-2.4-2.4.9-.9ZM11.6 5.2l2.4 2.4-6.5 6.5-3 .6.6-3 6.5-6.5Z" />
+    </svg>
+  )
+}
+
 export default function Deliveries() {
   const { profile } = useAuth()
   const isDispatcher = profile?.role === 'dispatcher'
@@ -155,54 +181,61 @@ export default function Deliveries() {
       {visible.length > 0 && (
         <div className="space-y-2">
           <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[56rem] text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Customer</th>
-                  <th className="px-4 py-3 font-medium">Address</th>
-                  <th className="px-4 py-3 font-medium">Driver</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Created</th>
-                  <th className="px-4 py-3 text-right font-medium">Actions</th>
+                  <th className="px-5 py-3.5 font-medium">Customer</th>
+                  <th className="px-5 py-3.5 font-medium">Address</th>
+                  <th className="px-5 py-3.5 font-medium">Driver</th>
+                  <th className="px-5 py-3.5 font-medium">Status</th>
+                  <th className="px-5 py-3.5 font-medium">Created</th>
+                  <th className="px-5 py-3.5 text-right font-medium">Actions</th>
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-slate-100">
                 {visible.map((delivery) => (
-                  <tr key={delivery.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium">
+                  <tr key={delivery.id} className="align-middle hover:bg-slate-50">
+                    <td className="whitespace-nowrap px-5 py-4 font-medium">
                       {delivery.customer_name}
                     </td>
-                    <td className="max-w-xs truncate px-4 py-3 text-slate-600">
+                    <td
+                      className="max-w-sm truncate px-5 py-4 text-slate-600"
+                      title={delivery.address}
+                    >
                       {delivery.address}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                    <td className="whitespace-nowrap px-5 py-4 text-slate-600">
                       {nameFor(delivery.driver_id)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4">
                       <StatusBadge status={delivery.status} />
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-500">
+                    <td className="whitespace-nowrap px-5 py-4 text-slate-500">
                       {new Date(delivery.created_at).toLocaleDateString()}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
-                      <Link
-                        to={`/deliveries/${delivery.id}`}
-                        className="font-medium text-blue-600 underline"
-                      >
-                        View
-                      </Link>
-
-                      {/* Edit only where editing is actually possible: a
-                          dispatcher, on a delivery still pending. */}
-                      {isDispatcher && delivery.status === 'pending' && (
+                    <td className="whitespace-nowrap px-5 py-4">
+                      <div className="flex items-center justify-end gap-2">
                         <Link
-                          to={`/deliveries/${delivery.id}#edit`}
-                          className="ml-3 font-medium text-blue-600 underline"
+                          to={`/deliveries/${delivery.id}`}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
                         >
-                          Edit
+                          <EyeIcon />
+                          View
                         </Link>
-                      )}
+
+                        {/* Edit only where editing is actually possible: a
+                            dispatcher, on a delivery still pending. */}
+                        {isDispatcher && delivery.status === 'pending' && (
+                          <Link
+                            to={`/deliveries/${delivery.id}#edit`}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+                          >
+                            <PencilIcon />
+                            Edit
+                          </Link>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

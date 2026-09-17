@@ -36,7 +36,7 @@ in the database is turned away.
 | Route              | What it is                                            |
 | ------------------ | ----------------------------------------------------- |
 | `/login`           | Sign in                                               |
-| `/deliveries`      | The run sheet, plus the create form for dispatchers    |
+| `/deliveries`      | The run sheet: a searchable table, with create for dispatchers |
 | `/deliveries/:id`  | One delivery: details, map, and the role's actions     |
 | `/settings`        | Display name and WhatsApp message template            |
 
