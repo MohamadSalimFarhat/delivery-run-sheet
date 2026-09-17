@@ -81,7 +81,9 @@ grant update (
     status,
     customer_name,
     customer_phone,
-    address
+    address,
+    latitude,
+    longitude
 ) on public.deliveries to authenticated;
 
 -- Nobody is granted delete on anything.
@@ -223,8 +225,10 @@ language plpgsql
 set search_path = ''
 as $fn$
 begin
-    if (new.customer_name, new.customer_phone, new.address)
-        is distinct from (old.customer_name, old.customer_phone, old.address)
+    if (new.customer_name, new.customer_phone, new.address,
+        new.latitude, new.longitude)
+        is distinct from (old.customer_name, old.customer_phone, old.address,
+                          old.latitude, old.longitude)
        and public.current_user_role() <> 'dispatcher'
     then
         raise exception 'Only a dispatcher can change customer details';
@@ -247,7 +251,7 @@ create trigger deliveries_guard_customer_details
 notify pgrst, 'reload schema';
 
 -- ---------------------------------------------------------------------------
--- Check: what `authenticated` ended up with. Expect exactly these ten rows,
+-- Check: what `authenticated` ended up with. Expect exactly these twelve rows,
 -- and nothing at all for anon.
 --
 --   authenticated | deliveries | INSERT | (whole table)
@@ -256,6 +260,8 @@ notify pgrst, 'reload schema';
 --   authenticated | deliveries | UPDATE | customer_name
 --   authenticated | deliveries | UPDATE | customer_phone
 --   authenticated | deliveries | UPDATE | driver_id
+--   authenticated | deliveries | UPDATE | latitude
+--   authenticated | deliveries | UPDATE | longitude
 --   authenticated | deliveries | UPDATE | status
 --   authenticated | profiles   | SELECT | (whole table)
 --   authenticated | profiles   | UPDATE | display_name

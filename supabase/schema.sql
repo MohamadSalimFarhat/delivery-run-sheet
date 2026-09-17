@@ -46,6 +46,21 @@ create table if not exists public.deliveries (
 create index if not exists deliveries_driver_id_idx on public.deliveries (driver_id);
 
 -- ---------------------------------------------------------------------------
+-- Where the delivery actually is.
+--
+-- The address text is for people to read. These are what the driver is
+-- navigated to, captured when the dispatcher picks the address from the
+-- suggestions rather than guessed from the text afterwards. A street name on
+-- its own can be a kilometre long; a pin cannot.
+--
+-- Nullable, because deliveries created before this existed have no pin. Those
+-- fall back to locating the address text, as before.
+-- ---------------------------------------------------------------------------
+alter table public.deliveries
+    add column if not exists latitude  double precision,
+    add column if not exists longitude double precision;
+
+-- ---------------------------------------------------------------------------
 -- Row Level Security.
 --
 -- The browser talks to Supabase directly, signed in as the `authenticated`

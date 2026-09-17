@@ -56,7 +56,8 @@ export default async function handler(
 
   // 1. Who is asking, and are they allowed to see this delivery?
   const lookup = await fetch(
-    `${SUPABASE_URL}/rest/v1/deliveries?id=eq.${encodeURIComponent(id)}&select=address`,
+    `${SUPABASE_URL}/rest/v1/deliveries?id=eq.${encodeURIComponent(id)}` +
+      `&select=address,latitude,longitude`,
     {
       headers: {
         apikey: SUPABASE_PUBLISHABLE_KEY,
@@ -69,37 +70,53 @@ export default async function handler(
     return sendError(res, 401, 'Sign in to see the map.')
   }
 
-  const rows = (await lookup.json()) as { address: string }[]
+  const rows = (await lookup.json()) as {
+    address: string
+    latitude: number | null
+    longitude: number | null
+  }[]
   if (rows.length === 0) {
     // Either no such delivery, or not one this user may see. Same answer.
     return sendError(res, 404, 'Delivery not found.')
   }
 
-  const address = rows[0].address
+  const { address, latitude, longitude } = rows[0]
 
-  // 2. Turn the address into coordinates.
-  const geocode = await fetch(
-    `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(address)}` +
-      `&limit=1&format=json&apiKey=${GEOAPIFY_API_KEY}`,
-  )
+  // 2. Where is it?
+  //
+  // Normally the pin was captured when the dispatcher picked the address from
+  // the suggestions, so there is nothing to work out. Older deliveries, saved
+  // before pins existed, still have to be located from their text.
+  let place: { lat: number; lon: number }
 
-  if (!geocode.ok) {
-    return sendError(res, 502, 'The map service did not respond.')
-  }
+  if (latitude !== null && longitude !== null) {
+    place = { lat: latitude, lon: longitude }
+  } else {
+    const geocode = await fetch(
+      `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(address)}` +
+        `&limit=1&format=json&apiKey=${GEOAPIFY_API_KEY}`,
+    )
 
-  const geocoded = (await geocode.json()) as {
-    results?: { lat: number; lon: number }[]
-  }
-  const place = geocoded.results?.[0]
+    if (!geocode.ok) {
+      return sendError(res, 502, 'The map service did not respond.')
+    }
 
-  if (!place) {
-    return sendError(res, 404, 'This address could not be found on the map.')
+    const geocoded = (await geocode.json()) as {
+      results?: { lat: number; lon: number }[]
+    }
+    const found = geocoded.results?.[0]
+
+    if (!found) {
+      return sendError(res, 404, 'This address could not be found on the map.')
+    }
+
+    place = found
   }
 
   // 3. Fetch the picture.
   const staticMap = await fetch(
     'https://maps.geoapify.com/v1/staticmap' +
-      '?style=osm-bright&width=640&height=360&zoom=15' +
+      '?style=osm-bright&width=640&height=360&zoom=17' +
       `&center=lonlat:${place.lon},${place.lat}` +
       `&marker=lonlat:${place.lon},${place.lat};color:%23dc2626;size:medium` +
       `&apiKey=${GEOAPIFY_API_KEY}`,

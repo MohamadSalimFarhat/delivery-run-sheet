@@ -43,11 +43,12 @@ in the database is turned away.
 ## What you can do
 
 1. Sign in, and be shown only what your role is allowed to see.
-2. Create a delivery, with the address checked against the map before it saves
-   and the phone number normalised for WhatsApp.
+2. Create a delivery, picking the address from live map suggestions so the
+   exact point is pinned, with the phone number normalised for WhatsApp.
 3. Assign or reassign a driver, while the delivery is pending.
 4. Correct a customer's name, number or address, while the delivery is pending.
-5. See the delivery address on a map.
+5. See the delivery on a map, and tap Navigate for turn-by-turn directions to
+   the pinned point.
 6. Message the customer on WhatsApp, with the text already written.
 7. Mark a delivery delivered, which records the time.
 8. Change your display name and the message you send, in Settings.
@@ -95,7 +96,10 @@ and never enters the bundle.
   using the caller's own token, so one request does the authentication, the
   permission check and the lookup at once.
 - `GET /api/geocode?address=...` checks whether an address can be found, and
-  returns it as the map spells it. Dispatchers only.
+  returns it as the map spells it, with coordinates. Dispatchers only.
+- `GET /api/address-suggest?q=...` returns up to five real places as the
+  dispatcher types, each with its own exact coordinates. Dispatchers only, and
+  debounced in the browser so a long address is one lookup rather than forty.
 
 ## Running locally
 
@@ -135,9 +139,15 @@ up** off, and turn **Confirm email** off.
   the permission layer. A Java service in front of it would have been a second
   thing to deploy and keep running, for rules Postgres already enforces closer
   to the data.
-- **Addresses are stored as Geoapify spells them**, rather than as typed. It
-  means the map always resolves, at the cost of losing detail like an
-  apartment number. A real shop would keep both.
+- **Addresses are pinned, not guessed.** The dispatcher picks from
+  suggestions, and the coordinates that come back are stored on the delivery.
+  Geocoding a typed address afterwards would only find the street, which in a
+  city where many buildings have no number leaves the driver guessing. Typing
+  an address by hand still works and is confirmed on save, but it only pins
+  the street, and the delivery page says so.
+- **Addresses are stored as Geoapify spells them**, rather than as typed, at
+  the cost of losing detail like an apartment number. A real shop would keep
+  both.
 - **No delete, anywhere.** Nothing in the brief needs it, and not granting it
   is simpler than guarding it.
 - **No realtime.** The list is read when the page opens. For a shop with three

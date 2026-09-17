@@ -2,6 +2,8 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAuth } from '../auth/useAuth'
 import { checkAddress } from '../lib/geocode'
+import type { Place } from '../lib/geocode'
+import AddressField from './AddressField'
 import { normalizePhone } from '../lib/phone'
 import { supabase } from '../lib/supabase'
 import type { PersonSummary } from '../lib/types'
@@ -16,6 +18,8 @@ export default function NewDeliveryForm({ drivers, onCreated }: Props) {
   const [customerName, setCustomerName] = useState('')
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
+  // Set only by picking a suggestion, cleared by typing over it.
+  const [pin, setPin] = useState<Place | null>(null)
   const [driverId, setDriverId] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -34,20 +38,35 @@ export default function NewDeliveryForm({ drivers, onCreated }: Props) {
     setSubmitting(true)
     setError(null)
 
-    // Refuse an address the map cannot find, and store the one it returns, so
-    // every delivery in the database is somewhere a driver can actually be
-    // sent.
-    const checked = await checkAddress(address.trim())
-    if (!checked.ok) {
-      setError(checked.message)
-      setSubmitting(false)
-      return
+    // A picked suggestion already carries its exact point, so there is
+    // nothing to look up. Text typed by hand still has to be confirmed, and
+    // is refused if the map cannot place it.
+    let place: Place
+
+    if (pin) {
+      place = pin
+    } else {
+      const checked = await checkAddress(address.trim())
+
+      if (!checked.ok) {
+        setError(checked.message)
+        setSubmitting(false)
+        return
+      }
+
+      place = {
+        address: checked.address,
+        latitude: checked.latitude,
+        longitude: checked.longitude,
+      }
     }
 
     const { error: insertError } = await supabase.from('deliveries').insert({
       customer_name: customerName.trim(),
       customer_phone: digits,
-      address: checked.address,
+      address: place.address,
+      latitude: place.latitude,
+      longitude: place.longitude,
       driver_id: driverId === '' ? null : driverId,
       created_by: profile.id,
       status: 'pending',
@@ -63,6 +82,7 @@ export default function NewDeliveryForm({ drivers, onCreated }: Props) {
     setCustomerName('')
     setPhone('')
     setAddress('')
+    setPin(null)
     setDriverId('')
     onCreated()
   }
@@ -102,20 +122,21 @@ export default function NewDeliveryForm({ drivers, onCreated }: Props) {
           </span>
         </label>
 
-        <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
+        <div className="block text-sm font-medium text-slate-700 sm:col-span-2">
           Address
-          <input
+          <AddressField
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            required
-            placeholder="Rue Gouraud, Gemmayzeh, Beirut, Lebanon"
-            className={inputClass}
+            pinned={pin !== null}
+            onType={(text) => {
+              setAddress(text)
+              setPin(null)
+            }}
+            onPick={(place) => {
+              setAddress(place.address)
+              setPin(place)
+            }}
           />
-          <span className="mt-1 block text-xs font-normal text-slate-500">
-            Checked on the map when you save, and stored the way the map
-            spells it.
-          </span>
-        </label>
+        </div>
 
         <label className="block text-sm font-medium text-slate-700">
           Driver
@@ -145,7 +166,7 @@ export default function NewDeliveryForm({ drivers, onCreated }: Props) {
         disabled={submitting}
         className="mt-4 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
       >
-        {submitting ? 'Checking address…' : 'Create delivery'}
+        {submitting ? 'Saving…' : 'Create delivery'}
       </button>
     </form>
   )

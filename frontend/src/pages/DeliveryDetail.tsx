@@ -5,6 +5,7 @@ import BackToDeliveries from '../components/BackToDeliveries'
 import DeliveryMap from '../components/DeliveryMap'
 import EditDeliveryForm from '../components/EditDeliveryForm'
 import StatusBadge from '../components/StatusBadge'
+import { directionsLink } from '../lib/directions'
 import { formatPhone } from '../lib/phone'
 import { supabase } from '../lib/supabase'
 import type { Delivery, PersonSummary } from '../lib/types'
@@ -153,6 +154,12 @@ export default function DeliveryDetail() {
   const isPending = delivery.status === 'pending'
   const isMine = delivery.driver_id === profile?.id
 
+  const navigateTo = directionsLink(
+    delivery.latitude,
+    delivery.longitude,
+    delivery.address,
+  )
+
   const savedDriver = delivery.driver_id ?? ''
   const selectedDriver = pickedDriver ?? savedDriver
   const hasUnsavedChange = selectedDriver !== savedDriver
@@ -203,14 +210,46 @@ export default function DeliveryDetail() {
           </div>
         </dl>
 
-        <div className="mt-6">
-          {/* Keyed by the address so correcting it remounts the map with a
-              clean slate, rather than leaving the old picture on screen. */}
-          <DeliveryMap
-            key={delivery.address}
-            deliveryId={delivery.id}
-            address={delivery.address}
-          />
+        <div className="mt-6 space-y-3">
+          {/* Keyed by the pin so moving it remounts the map with a clean
+              slate, rather than leaving the old picture on screen. */}
+          <a
+            href={navigateTo}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block"
+            title="Open directions"
+          >
+            <DeliveryMap
+              key={`${delivery.latitude},${delivery.longitude},${delivery.address}`}
+              deliveryId={delivery.id}
+              address={delivery.address}
+            />
+          </a>
+
+          <a
+            href={navigateTo}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="h-4 w-4"
+            >
+              <path d="M10 2a5 5 0 0 0-5 5c0 3.5 4.1 8.6 4.6 9.2a.5.5 0 0 0 .8 0C10.9 15.6 15 10.5 15 7a5 5 0 0 0-5-5Zm0 7a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z" />
+            </svg>
+            Navigate
+          </a>
+
+          {delivery.latitude === null && (
+            <p className="text-xs text-amber-700">
+              This delivery has no pin, so directions go to the street rather
+              than the exact spot.
+            </p>
+          )}
         </div>
       </div>
 

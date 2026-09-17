@@ -1,17 +1,17 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 /**
- * GET /api/geocode?address=<what the dispatcher typed>
+ * GET /api/address-suggest?q=<what the dispatcher has typed so far>
  *
- * Answers one question: can this address be found on the map?
+ * Returns up to five real places, each with the exact point Geoapify holds
+ * for it. The dispatcher picks one, and that pin is what gets saved.
  *
- * Used before a delivery is saved, so an address nobody can locate is never
- * stored in the first place. On success it returns the address as Geoapify
- * spells it, and that is what gets saved - the same idea as normalising a
- * phone number, applied to addresses.
+ * This is the difference between knowing the street and knowing the door.
+ * Geocoding a typed address afterwards guesses; picking a suggestion does
+ * not, because the coordinates come back with the choice.
  *
- * Dispatchers only, since they are the only ones who create or edit
- * deliveries, and the Geoapify quota is worth protecting.
+ * Dispatchers only, and it is called on every few keystrokes, so it is the
+ * one endpoint where the Geoapify quota is worth thinking about.
  */
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL
@@ -42,9 +42,11 @@ export default async function handler(
   }
 
   const url = new URL(req.url ?? '', `http://${req.headers.host ?? 'localhost'}`)
-  const address = url.searchParams.get('address')?.trim()
-  if (!address) {
-    return sendJson(res, 400, { error: 'Missing address.' })
+  const query = url.searchParams.get('q')?.trim() ?? ''
+
+  // Too short to be worth a lookup, and too short to be useful.
+  if (query.length < 3) {
+    return sendJson(res, 200, { suggestions: [] })
   }
 
   const headers = {
@@ -52,7 +54,6 @@ export default async function handler(
     Authorization: authorization,
   }
 
-  // 1. Is this a real, signed-in user?
   const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers })
   if (!userResponse.ok) {
     return sendJson(res, 401, { error: 'Sign in first.' })
@@ -63,7 +64,6 @@ export default async function handler(
     return sendJson(res, 401, { error: 'Sign in first.' })
   }
 
-  // 2. Are they a dispatcher? RLS lets anyone read their own profile row.
   const profileResponse = await fetch(
     `${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=role`,
     { headers },
@@ -77,46 +77,31 @@ export default async function handler(
     return sendJson(res, 403, { error: 'Only a dispatcher can do that.' })
   }
 
-  // 3. Can Geoapify find it?
-  const geocode = await fetch(
-    `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(address)}` +
-      `&limit=1&format=json&apiKey=${GEOAPIFY_API_KEY}`,
+  const suggest = await fetch(
+    `https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}` +
+      `&limit=5&format=json&apiKey=${GEOAPIFY_API_KEY}`,
   )
 
-  if (!geocode.ok) {
+  if (!suggest.ok) {
     return sendJson(res, 502, { error: 'The map service did not respond.' })
   }
 
-  const geocoded = (await geocode.json()) as {
-    results?: {
-      formatted?: string
-      lat?: number
-      lon?: number
-      rank?: { confidence?: number }
-    }[]
-  }
-  const match = geocoded.results?.[0]
-
-  if (!match?.formatted) {
-    return sendJson(res, 404, {
-      error:
-        'That address could not be found on the map. Try adding the street, city and country.',
-    })
+  const body = (await suggest.json()) as {
+    results?: { formatted?: string; lat?: number; lon?: number }[]
   }
 
-  // A very low confidence match usually means Geoapify fell back to the
-  // country or the city, which would put the driver in the wrong place.
-  const confidence = match.rank?.confidence ?? 0
-  if (confidence < 0.2) {
-    return sendJson(res, 404, {
-      error:
-        'That address is too vague to place on the map. Add the street, city and country.',
-    })
-  }
+  const suggestions = (body.results ?? [])
+    .filter(
+      (result) =>
+        typeof result.formatted === 'string' &&
+        typeof result.lat === 'number' &&
+        typeof result.lon === 'number',
+    )
+    .map((result) => ({
+      label: result.formatted as string,
+      latitude: result.lat as number,
+      longitude: result.lon as number,
+    }))
 
-  return sendJson(res, 200, {
-    formatted: match.formatted,
-    latitude: match.lat ?? null,
-    longitude: match.lon ?? null,
-  })
+  return sendJson(res, 200, { suggestions })
 }

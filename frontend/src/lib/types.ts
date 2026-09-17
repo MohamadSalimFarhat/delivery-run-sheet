@@ -23,6 +23,9 @@ export type Delivery = {
   customer_name: string
   customer_phone: string
   address: string
+  /** The exact point the driver is navigated to. Null on older deliveries. */
+  latitude: number | null
+  longitude: number | null
   status: DeliveryStatus
   driver_id: string | null
   created_by: string

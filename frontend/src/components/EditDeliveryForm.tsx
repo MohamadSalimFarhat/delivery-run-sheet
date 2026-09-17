@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { checkAddress } from '../lib/geocode'
+import type { Place } from '../lib/geocode'
+import AddressField from './AddressField'
 import { formatPhone, normalizePhone } from '../lib/phone'
 import type { Delivery } from '../lib/types'
 
@@ -29,6 +31,8 @@ export default function EditDeliveryForm({ delivery, busy, onSave }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
   const [checking, setChecking] = useState(false)
+  // Set only by picking a suggestion, cleared by typing over it.
+  const [pin, setPin] = useState<Place | null>(null)
 
   const current: Draft = draft ?? {
     customer_name: delivery.customer_name,
@@ -41,7 +45,9 @@ export default function EditDeliveryForm({ delivery, busy, onSave }: Props) {
   const hasChanges =
     current.customer_name.trim() !== delivery.customer_name ||
     current.address.trim() !== delivery.address ||
-    digits !== delivery.customer_phone
+    digits !== delivery.customer_phone ||
+    // Re-picking the same address still moves the pin, so that counts.
+    pin !== null
 
   function update(field: keyof Draft, value: string) {
     setDraft({ ...current, [field]: value })
@@ -57,30 +63,49 @@ export default function EditDeliveryForm({ delivery, busy, onSave }: Props) {
       return
     }
 
-    setChecking(true)
+    // Work out where this delivery should be pinned.
+    //
+    // A picked suggestion already knows. An unchanged address keeps the pin it
+    // has. Only text edited by hand needs looking up, so correcting a
+    // customer's name spends no Geoapify credit.
+    let place: Place
 
-    // Only re-check when the address actually changed, so correcting a
-    // customer's name does not spend a Geoapify credit.
-    const addressChanged = current.address.trim() !== delivery.address
-    const checked = addressChanged
-      ? await checkAddress(current.address.trim())
-      : ({ ok: true, address: delivery.address } as const)
+    if (pin) {
+      place = pin
+    } else if (current.address.trim() === delivery.address) {
+      place = {
+        address: delivery.address,
+        latitude: delivery.latitude,
+        longitude: delivery.longitude,
+      }
+    } else {
+      setChecking(true)
+      const checked = await checkAddress(current.address.trim())
+      setChecking(false)
 
-    setChecking(false)
+      if (!checked.ok) {
+        setError(checked.message)
+        return
+      }
 
-    if (!checked.ok) {
-      setError(checked.message)
-      return
+      place = {
+        address: checked.address,
+        latitude: checked.latitude,
+        longitude: checked.longitude,
+      }
     }
 
     const ok = await onSave({
       customer_name: current.customer_name.trim(),
       customer_phone: digits,
-      address: checked.address,
+      address: place.address,
+      latitude: place.latitude,
+      longitude: place.longitude,
     })
 
     if (ok) {
       setDraft(null)
+      setPin(null)
       setSaved(true)
     }
   }
@@ -96,8 +121,8 @@ export default function EditDeliveryForm({ delivery, busy, onSave }: Props) {
     >
       <h2 className="text-sm font-semibold">Correct the details</h2>
       <p className="mt-1 text-xs text-slate-500">
-        The address is checked on the map when you save, and stored the way
-        the map spells it. Fixing it here also moves the map.
+        Pick the address from the suggestions to move the pin the driver is
+        navigated to.
       </p>
 
       <div className="mt-4 space-y-4">
@@ -127,16 +152,22 @@ export default function EditDeliveryForm({ delivery, busy, onSave }: Props) {
           </span>
         </label>
 
-        <label className="block text-sm font-medium text-slate-700">
+        <div className="block text-sm font-medium text-slate-700">
           Address
-          <input
+          <AddressField
             value={current.address}
-            onChange={(e) => update('address', e.target.value)}
             disabled={busy}
-            required
-            className={inputClass}
+            pinned={pin !== null}
+            onType={(text) => {
+              update('address', text)
+              setPin(null)
+            }}
+            onPick={(place) => {
+              update('address', place.address)
+              setPin(place)
+            }}
           />
-        </label>
+        </div>
       </div>
 
       {error && (
