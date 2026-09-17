@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { checkAddress } from '../lib/geocode'
 import { formatPhone, normalizePhone } from '../lib/phone'
 import type { Delivery } from '../lib/types'
 
@@ -27,6 +28,7 @@ export default function EditDeliveryForm({ delivery, busy, onSave }: Props) {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [checking, setChecking] = useState(false)
 
   const current: Draft = draft ?? {
     customer_name: delivery.customer_name,
@@ -55,10 +57,26 @@ export default function EditDeliveryForm({ delivery, busy, onSave }: Props) {
       return
     }
 
+    setChecking(true)
+
+    // Only re-check when the address actually changed, so correcting a
+    // customer's name does not spend a Geoapify credit.
+    const addressChanged = current.address.trim() !== delivery.address
+    const checked = addressChanged
+      ? await checkAddress(current.address.trim())
+      : ({ ok: true, address: delivery.address } as const)
+
+    setChecking(false)
+
+    if (!checked.ok) {
+      setError(checked.message)
+      return
+    }
+
     const ok = await onSave({
       customer_name: current.customer_name.trim(),
       customer_phone: digits,
-      address: current.address.trim(),
+      address: checked.address,
     })
 
     if (ok) {
@@ -77,7 +95,8 @@ export default function EditDeliveryForm({ delivery, busy, onSave }: Props) {
     >
       <h2 className="text-sm font-semibold">Correct the details</h2>
       <p className="mt-1 text-xs text-slate-500">
-        Fixing the address here also moves the map.
+        The address is checked on the map when you save, and stored the way
+        the map spells it. Fixing it here also moves the map.
       </p>
 
       <div className="mt-4 space-y-4">
@@ -128,10 +147,10 @@ export default function EditDeliveryForm({ delivery, busy, onSave }: Props) {
       <div className="mt-4 flex items-center gap-3">
         <button
           type="submit"
-          disabled={busy || !hasChanges}
+          disabled={busy || checking || !hasChanges}
           className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
         >
-          {busy ? 'Saving…' : 'Save details'}
+          {checking ? 'Checking address…' : busy ? 'Saving…' : 'Save details'}
         </button>
 
         {hasChanges && <span className="text-sm text-slate-500">Not saved yet.</span>}

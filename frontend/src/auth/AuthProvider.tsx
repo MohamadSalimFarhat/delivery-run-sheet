@@ -12,6 +12,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loaded, setLoaded] = useState<LoadedProfile | null>(null)
   const [loadingSession, setLoadingSession] = useState(true)
+  const [profileVersion, setProfileVersion] = useState(0)
 
   // Find out whether a session already exists (Supabase keeps it in browser
   // storage, so a refresh stays signed in), then keep listening for changes.
@@ -54,7 +55,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [userId])
+  }, [userId, profileVersion])
 
   // Both derived during render, rather than cleared in an effect. That way
   // signing out drops the profile immediately, and a profile belonging to the
@@ -68,6 +69,11 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     return error ? error.message : null
   }, [])
 
+  const refreshProfile = useCallback(
+    () => setProfileVersion((version) => version + 1),
+    [],
+  )
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut()
   }, [])
@@ -79,8 +85,17 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       loading: loadingSession || loadingProfile,
       signIn,
       signOut,
+      refreshProfile,
     }),
-    [session, profile, loadingSession, loadingProfile, signIn, signOut],
+    [
+      session,
+      profile,
+      loadingSession,
+      loadingProfile,
+      signIn,
+      signOut,
+      refreshProfile,
+    ],
   )
 
   return <AuthContext value={value}>{children}</AuthContext>

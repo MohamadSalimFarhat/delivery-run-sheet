@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAuth } from '../auth/useAuth'
+import { checkAddress } from '../lib/geocode'
 import { normalizePhone } from '../lib/phone'
 import { supabase } from '../lib/supabase'
 import type { PersonSummary } from '../lib/types'
@@ -33,10 +34,20 @@ export default function NewDeliveryForm({ drivers, onCreated }: Props) {
     setSubmitting(true)
     setError(null)
 
+    // Refuse an address the map cannot find, and store the one it returns, so
+    // every delivery in the database is somewhere a driver can actually be
+    // sent.
+    const checked = await checkAddress(address.trim())
+    if (!checked.ok) {
+      setError(checked.message)
+      setSubmitting(false)
+      return
+    }
+
     const { error: insertError } = await supabase.from('deliveries').insert({
       customer_name: customerName.trim(),
       customer_phone: digits,
-      address: address.trim(),
+      address: checked.address,
       driver_id: driverId === '' ? null : driverId,
       created_by: profile.id,
       status: 'pending',
@@ -97,9 +108,13 @@ export default function NewDeliveryForm({ drivers, onCreated }: Props) {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             required
-            placeholder="Rue Gouraud, Gemmayzeh, Beirut"
+            placeholder="Rue Gouraud, Gemmayzeh, Beirut, Lebanon"
             className={inputClass}
           />
+          <span className="mt-1 block text-xs font-normal text-slate-500">
+            Checked on the map when you save, and stored the way the map
+            spells it.
+          </span>
         </label>
 
         <label className="block text-sm font-medium text-slate-700">
@@ -130,7 +145,7 @@ export default function NewDeliveryForm({ drivers, onCreated }: Props) {
         disabled={submitting}
         className="mt-4 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
       >
-        {submitting ? 'Creating…' : 'Create delivery'}
+        {submitting ? 'Checking address…' : 'Create delivery'}
       </button>
     </form>
   )

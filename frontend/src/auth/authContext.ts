@@ -12,6 +12,8 @@ export type AuthValue = {
   /** Returns an error message to show, or null on success. */
   signIn: (email: string, password: string) => Promise<string | null>
   signOut: () => Promise<void>
+  /** Re-read the profile, after Settings has changed it. */
+  refreshProfile: () => void
 }
 
 export const AuthContext = createContext<AuthValue | null>(null)
