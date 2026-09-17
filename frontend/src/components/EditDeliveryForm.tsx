@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { checkAddress } from '../lib/geocode'
 import type { Place } from '../lib/geocode'
 import AddressField from './AddressField'
+import LocationPinField from './LocationPinField'
 import { formatPhone, normalizePhone } from '../lib/phone'
 import type { Delivery } from '../lib/types'
 
@@ -167,6 +168,19 @@ export default function EditDeliveryForm({ delivery, busy, onSave }: Props) {
               setPin(place)
             }}
           />
+
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <span className="text-sm font-medium text-slate-700">
+              Or use a location the customer sent
+            </span>
+            <LocationPinField
+              disabled={busy}
+              onPinned={(place) => {
+                update('address', place.address)
+                setPin(place)
+              }}
+            />
+          </div>
         </div>
       </div>
 

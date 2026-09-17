@@ -43,15 +43,19 @@ in the database is turned away.
 ## What you can do
 
 1. Sign in, and be shown only what your role is allowed to see.
-2. Create a delivery, picking the address from live map suggestions so the
-   exact point is pinned, with the phone number normalised for WhatsApp.
+2. Create a delivery, either picking the address from live map suggestions or
+   pasting the location pin the customer sent, so the exact point is stored.
+   Phone numbers are normalised for WhatsApp.
 3. Assign or reassign a driver, while the delivery is pending.
 4. Correct a customer's name, number or address, while the delivery is pending.
 5. See the delivery on a map, and tap Navigate for turn-by-turn directions to
    the pinned point.
-6. Message the customer on WhatsApp, with the text already written.
-7. Mark a delivery delivered, which records the time.
-8. Change your display name and the message you send, in Settings.
+6. Ask the customer for their location pin on WhatsApp, and paste what they
+   send straight onto the delivery.
+7. Message the customer on WhatsApp as the driver, with the text already
+   written.
+8. Mark a delivery delivered, which records the time.
+9. Change your display name and the message you send, in Settings.
 
 ## How the two roles are actually enforced
 
@@ -100,6 +104,10 @@ and never enters the bundle.
 - `GET /api/address-suggest?q=...` returns up to five real places as the
   dispatcher types, each with its own exact coordinates. Dispatchers only, and
   debounced in the browser so a long address is one lookup rather than forty.
+- `GET /api/resolve-location?url=...` follows a shortened maps link, which the
+  browser cannot read across origins, and reports the coordinates behind it.
+  Only a fixed list of map hosts may be fetched, so it cannot be turned into a
+  way of making the server fetch arbitrary addresses.
 
 ## Running locally
 
@@ -139,6 +147,12 @@ up** off, and turn **Confirm email** off.
   the permission layer. A Java service in front of it would have been a second
   thing to deploy and keep running, for rules Postgres already enforces closer
   to the data.
+- **The most accurate address is the customer's own pin.** The dispatcher can
+  ask for one over WhatsApp and paste back whatever the customer sends - a
+  Google Maps link, an Android `geo:` link, a shortened link, or two
+  coordinates. Reading those messages automatically would need the WhatsApp
+  Business API, a verified business account and a webhook, so a person carries
+  the pin across, which is what happens with a paper run sheet anyway.
 - **Addresses are pinned, not guessed.** The dispatcher picks from
   suggestions, and the coordinates that come back are stored on the delivery.
   Geocoding a typed address afterwards would only find the street, which in a

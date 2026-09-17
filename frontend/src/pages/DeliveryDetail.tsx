@@ -154,6 +154,14 @@ export default function DeliveryDetail() {
   const isPending = delivery.status === 'pending'
   const isMine = delivery.driver_id === profile?.id
 
+  // A fixed request, not the driver's template: this is the shop asking an
+  // operational question, not a driver saying they are on the way.
+  const askForLocation = whatsappLink(
+    delivery.customer_phone,
+    `Hi ${delivery.customer_name}, this is ${profile?.display_name ?? 'the shop'}. ` +
+      'Could you send your location pin so the driver can find you? Thank you.',
+  )
+
   const navigateTo = directionsLink(
     delivery.latitude,
     delivery.longitude,
@@ -276,6 +284,27 @@ export default function DeliveryDetail() {
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
           {actionError}
         </p>
+      )}
+
+      {/* Dispatcher: get the exact spot from the person who is standing on
+          it. More accurate than any address, and the way a shop actually
+          does this. */}
+      {isDispatcher && isPending && (
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <a
+            href={askForLocation}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block rounded-md bg-green-600 px-3 py-2.5 text-center text-sm font-medium text-white hover:bg-green-700"
+          >
+            Ask {delivery.customer_name} for their location
+          </a>
+          <p className="mt-3 text-xs text-slate-500">
+            Opens WhatsApp with the request written. When they send a pin,
+            paste it into the address box below to place this delivery
+            exactly.
+          </p>
+        </div>
       )}
 
       {/* Dispatcher: fix what was mistyped, while still pending. */}

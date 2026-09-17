@@ -4,6 +4,7 @@ import { useAuth } from '../auth/useAuth'
 import { checkAddress } from '../lib/geocode'
 import type { Place } from '../lib/geocode'
 import AddressField from './AddressField'
+import LocationPinField from './LocationPinField'
 import { normalizePhone } from '../lib/phone'
 import { supabase } from '../lib/supabase'
 import type { PersonSummary } from '../lib/types'
@@ -136,6 +137,18 @@ export default function NewDeliveryForm({ drivers, onCreated }: Props) {
               setPin(place)
             }}
           />
+
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <span className="text-sm font-medium text-slate-700">
+              Or use a location the customer sent
+            </span>
+            <LocationPinField
+              onPinned={(place) => {
+                setAddress(place.address)
+                setPin(place)
+              }}
+            />
+          </div>
         </div>
 
         <label className="block text-sm font-medium text-slate-700">

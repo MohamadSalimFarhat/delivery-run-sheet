@@ -99,3 +99,57 @@ export async function checkAddress(address: string): Promise<AddressCheck> {
     longitude: body.longitude ?? null,
   }
 }
+
+/**
+ * Turns a pin into a place: the coordinates are kept exactly as given, and
+ * the address becomes whatever the map calls that spot, so the delivery reads
+ * as a street rather than two numbers.
+ */
+export async function locateByCoordinates(
+  latitude: number,
+  longitude: number,
+): Promise<Place> {
+  const response = await authorisedFetch(
+    `/api/geocode?lat=${latitude}&lon=${longitude}`,
+  )
+
+  const body = response?.ok
+    ? ((await response.json().catch(() => null)) as {
+        formatted?: string
+      } | null)
+    : null
+
+  return {
+    address: body?.formatted ?? `Dropped pin at ${latitude}, ${longitude}`,
+    latitude,
+    longitude,
+  }
+}
+
+/**
+ * Follows a shortened maps link, which the browser cannot read itself, and
+ * returns the coordinates hidden behind it.
+ */
+export async function resolveLocationLink(
+  link: string,
+): Promise<{ latitude: number; longitude: number } | { error: string }> {
+  const response = await authorisedFetch(
+    `/api/resolve-location?url=${encodeURIComponent(link)}`,
+  )
+
+  if (!response) {
+    return { error: 'Links can only be opened on the deployed site.' }
+  }
+
+  const body = (await response.json().catch(() => null)) as {
+    latitude?: number
+    longitude?: number
+    error?: string
+  } | null
+
+  if (!response.ok || typeof body?.latitude !== 'number') {
+    return { error: body?.error ?? 'That link could not be read.' }
+  }
+
+  return { latitude: body.latitude, longitude: body.longitude as number }
+}

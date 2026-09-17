@@ -2,8 +2,12 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 
 /**
  * GET /api/geocode?address=<what the dispatcher typed>
+ * GET /api/geocode?lat=<n>&lon=<n>
  *
- * Answers one question: can this address be found on the map?
+ * With an address, answers one question: can this be found on the map?
+ * With coordinates, answers the reverse: what is the address at this pin?
+ * The second is used after a customer's location pin has been pasted in, so
+ * the delivery shows a street name a human can read rather than two numbers.
  *
  * Used before a delivery is saved, so an address nobody can locate is never
  * stored in the first place. On success it returns the address as Geoapify
@@ -43,7 +47,11 @@ export default async function handler(
 
   const url = new URL(req.url ?? '', `http://${req.headers.host ?? 'localhost'}`)
   const address = url.searchParams.get('address')?.trim()
-  if (!address) {
+  const lat = url.searchParams.get('lat')
+  const lon = url.searchParams.get('lon')
+  const reverse = lat !== null && lon !== null
+
+  if (!address && !reverse) {
     return sendJson(res, 400, { error: 'Missing address.' })
   }
 
@@ -77,11 +85,14 @@ export default async function handler(
     return sendJson(res, 403, { error: 'Only a dispatcher can do that.' })
   }
 
-  // 3. Can Geoapify find it?
-  const geocode = await fetch(
-    `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(address)}` +
-      `&limit=1&format=json&apiKey=${GEOAPIFY_API_KEY}`,
-  )
+  // 3. Ask Geoapify - forwards from an address, or backwards from a pin.
+  const endpoint = reverse
+    ? `https://api.geoapify.com/v1/geocode/reverse?lat=${encodeURIComponent(lat)}` +
+      `&lon=${encodeURIComponent(lon)}&limit=1&format=json&apiKey=${GEOAPIFY_API_KEY}`
+    : `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(address ?? '')}` +
+      `&limit=1&format=json&apiKey=${GEOAPIFY_API_KEY}`
+
+  const geocode = await fetch(endpoint)
 
   if (!geocode.ok) {
     return sendJson(res, 502, { error: 'The map service did not respond.' })
@@ -96,6 +107,17 @@ export default async function handler(
     }[]
   }
   const match = geocoded.results?.[0]
+
+  // A pin is the truth here; the address is only a label for it. So if the
+  // reverse lookup finds nothing readable, keep the pin and say so plainly
+  // rather than refusing a location the customer actually sent.
+  if (reverse) {
+    return sendJson(res, 200, {
+      formatted: match?.formatted ?? `Dropped pin at ${lat}, ${lon}`,
+      latitude: Number(lat),
+      longitude: Number(lon),
+    })
+  }
 
   if (!match?.formatted) {
     return sendJson(res, 404, {
