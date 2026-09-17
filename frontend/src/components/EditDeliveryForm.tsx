@@ -90,8 +90,9 @@ export default function EditDeliveryForm({ delivery, busy, onSave }: Props) {
 
   return (
     <form
+      id="edit"
       onSubmit={handleSubmit}
-      className="rounded-lg border border-slate-200 bg-white p-4"
+      className="scroll-mt-4 rounded-lg border border-slate-200 bg-white p-4"
     >
       <h2 className="text-sm font-semibold">Correct the details</h2>
       <p className="mt-1 text-xs text-slate-500">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import DeliveryMap from '../components/DeliveryMap'
 import EditDeliveryForm from '../components/EditDeliveryForm'
@@ -16,6 +16,7 @@ function formatMoment(value: string | null) {
 
 export default function DeliveryDetail() {
   const { id } = useParams()
+  const { hash } = useLocation()
   const { profile } = useAuth()
   const isDispatcher = profile?.role === 'dispatcher'
 
@@ -64,6 +65,16 @@ export default function DeliveryDetail() {
       cancelled = true
     }
   }, [id])
+
+  // Arriving from the table's Edit link. Client-side routing does not do
+  // the browser's usual jump to an anchor, so it is done here once the
+  // delivery has loaded and the form exists.
+  useEffect(() => {
+    if (hash !== '#edit' || loading) return
+    document
+      .getElementById('edit')
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [hash, loading])
 
   async function applyChange(changes: Partial<Delivery>) {
     setBusy(true)
