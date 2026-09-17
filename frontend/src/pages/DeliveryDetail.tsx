@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
+import DeliveryMap from '../components/DeliveryMap'
 import StatusBadge from '../components/StatusBadge'
 import { formatPhone } from '../lib/phone'
 import { supabase } from '../lib/supabase'
@@ -179,6 +180,10 @@ export default function DeliveryDetail() {
             <dd className="mt-0.5">{formatMoment(delivery.delivered_at)}</dd>
           </div>
         </dl>
+
+        <div className="mt-6">
+          <DeliveryMap deliveryId={delivery.id} />
+        </div>
       </div>
 
       {actionError && (
