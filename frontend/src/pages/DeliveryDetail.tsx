@@ -23,6 +23,13 @@ export default function DeliveryDetail() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
+  // What the dispatcher has picked but not yet saved. null means "untouched",
+  // so the dropdown falls back to whatever the delivery actually says. Derived
+  // this way rather than synced in an effect, so a save can never leave the
+  // dropdown showing a stale choice.
+  const [pickedDriver, setPickedDriver] = useState<string | null>(null)
+  const [savedNote, setSavedNote] = useState(false)
+
   useEffect(() => {
     let cancelled = false
 
@@ -73,10 +80,24 @@ export default function DeliveryDetail() {
 
     if (error) {
       setActionError(error.message)
-    } else if (!data) {
+      return false
+    }
+
+    if (!data) {
       setActionError('That change was refused. Reload the page and try again.')
-    } else {
-      setDelivery(data as Delivery)
+      return false
+    }
+
+    setDelivery(data as Delivery)
+    return true
+  }
+
+  async function saveDriver(value: string) {
+    const ok = await applyChange({ driver_id: value === '' ? null : value })
+    if (ok) {
+      // Drop back to reading from the saved record.
+      setPickedDriver(null)
+      setSavedNote(true)
     }
   }
 
@@ -116,6 +137,10 @@ export default function DeliveryDetail() {
 
   const isPending = delivery.status === 'pending'
   const isMine = delivery.driver_id === profile?.id
+
+  const savedDriver = delivery.driver_id ?? ''
+  const selectedDriver = pickedDriver ?? savedDriver
+  const hasUnsavedChange = selectedDriver !== savedDriver
 
   return (
     <div className="space-y-6">
@@ -168,13 +193,12 @@ export default function DeliveryDetail() {
           <label className="block text-sm font-medium text-slate-700">
             Assign driver
             <select
-              value={delivery.driver_id ?? ''}
+              value={selectedDriver}
               disabled={busy}
-              onChange={(e) =>
-                void applyChange({
-                  driver_id: e.target.value === '' ? null : e.target.value,
-                })
-              }
+              onChange={(e) => {
+                setPickedDriver(e.target.value)
+                setSavedNote(false)
+              }}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 disabled:opacity-50"
             >
               <option value="">Unassigned</option>
@@ -185,6 +209,24 @@ export default function DeliveryDetail() {
               ))}
             </select>
           </label>
+
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              disabled={busy || !hasUnsavedChange}
+              onClick={() => void saveDriver(selectedDriver)}
+              className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            >
+              {busy ? 'Saving…' : 'Save driver'}
+            </button>
+
+            {hasUnsavedChange && (
+              <span className="text-sm text-slate-500">Not saved yet.</span>
+            )}
+            {savedNote && !hasUnsavedChange && (
+              <span className="text-sm text-green-700">Driver updated.</span>
+            )}
+          </div>
         </div>
       )}
 
