@@ -11,18 +11,23 @@ Statuses are `pending` and `delivered`. Delivered is final.
 
 ## Stack
 
-| Part      | Technology                                            | Hosting |
-| --------- | ----------------------------------------------------- | ------- |
-| Frontend  | React, Vite, TypeScript, React Router, Tailwind        | Vercel  |
-| Backend   | Spring Boot, Java 21, Maven                            | Render  |
-| Database  | Supabase Postgres, over JDBC with Spring Data JPA      | Supabase |
-| Auth      | Supabase Auth (email + password, sign-ups disabled)    | Supabase |
-| Maps      | Geoapify, called only from the backend                 | -       |
+| Part     | Technology                                         | Hosting |
+| -------- | -------------------------------------------------- | ------- |
+| Frontend | React, Vite, TypeScript, React Router, Tailwind     | Vercel  |
+| Database | Supabase Postgres, read directly from the browser   | Supabase |
+| Auth     | Supabase Auth (email + password, sign-ups disabled) | Supabase |
+| Rules    | Postgres Row Level Security policies                | Supabase |
+| Maps     | Geoapify, called from one Vercel serverless function | Vercel |
+
+There is no separate backend. Permissions are enforced by RLS policies in the
+database, so they apply no matter what the browser asks for. The one piece of
+server-side code is a single Vercel function that holds the Geoapify key, which
+cannot live in the browser.
 
 ## Layout
 
-    frontend/   React app
-    backend/    Spring Boot API
+    frontend/   React app, plus the one serverless function
+    supabase/   schema.sql, policies.sql, seed_profiles.sql
 
 ## Live URLs
 
