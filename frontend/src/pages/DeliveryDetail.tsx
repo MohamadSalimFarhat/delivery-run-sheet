@@ -6,6 +6,7 @@ import StatusBadge from '../components/StatusBadge'
 import { formatPhone } from '../lib/phone'
 import { supabase } from '../lib/supabase'
 import type { Delivery, PersonSummary } from '../lib/types'
+import { buildMessage, whatsappLink } from '../lib/whatsapp'
 
 function formatMoment(value: string | null) {
   if (!value) return '—'
@@ -40,7 +41,7 @@ export default function DeliveryDetail() {
         // not an error. For a driver looking at someone else's delivery, the
         // policy means the row genuinely does not exist.
         supabase.from('deliveries').select('*').eq('id', id ?? '').maybeSingle(),
-        supabase.from('profiles').select('id, display_name, role'),
+        supabase.from('profiles').select('id, display_name, role, message_template'),
       ])
 
       if (cancelled) return
@@ -143,6 +144,21 @@ export default function DeliveryDetail() {
   const selectedDriver = pickedDriver ?? savedDriver
   const hasUnsavedChange = selectedDriver !== savedDriver
 
+  // The message is written in the assigned driver's voice, using their own
+  // display name and template, no matter who is looking at the page. Until a
+  // driver is assigned there is nobody to speak for, so it falls back to the
+  // person viewing it.
+  const messageAuthor =
+    people.find((person) => person.id === delivery.driver_id) ?? profile
+
+  const whatsappMessage = messageAuthor
+    ? buildMessage(messageAuthor.message_template, {
+        customer: delivery.customer_name,
+        driver: messageAuthor.display_name,
+        address: delivery.address,
+      })
+    : null
+
   return (
     <div className="space-y-6">
       <Link
@@ -185,6 +201,22 @@ export default function DeliveryDetail() {
           <DeliveryMap deliveryId={delivery.id} />
         </div>
       </div>
+
+      {whatsappMessage && (
+        <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <a
+            href={whatsappLink(delivery.customer_phone, whatsappMessage)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block rounded-md bg-green-600 px-3 py-2.5 text-center text-sm font-medium text-white hover:bg-green-700"
+          >
+            Message {delivery.customer_name} on WhatsApp
+          </a>
+          <p className="mt-3 text-xs text-slate-500">
+            Sends: “{whatsappMessage}”
+          </p>
+        </div>
+      )}
 
       {actionError && (
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
