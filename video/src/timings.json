@@ -1,0 +1,29 @@
+{
+  "voice": "CwhRBWXzGAHq8TQ4Fs17",
+  "scenes": [
+    {
+      "file": "scene-1.mp3",
+      "seconds": 4.412
+    },
+    {
+      "file": "scene-2.mp3",
+      "seconds": 4.69
+    },
+    {
+      "file": "scene-3.mp3",
+      "seconds": 1.95
+    },
+    {
+      "file": "scene-4.mp3",
+      "seconds": 6.409
+    },
+    {
+      "file": "scene-5.mp3",
+      "seconds": 2.322
+    },
+    {
+      "file": "scene-6.mp3",
+      "seconds": 4.18
+    }
+  ]
+}
