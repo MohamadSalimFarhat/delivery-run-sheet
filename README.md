@@ -29,7 +29,7 @@ in the database is turned away.
 | Database | Supabase Postgres, queried directly from the browser  | Supabase |
 | Auth     | Supabase Auth, email and password                     | Supabase |
 | Rules    | Postgres Row Level Security policies                  | Supabase |
-| Maps     | Geoapify, called only from two Vercel functions       | Vercel   |
+| Maps     | Geoapify, called only from four Vercel functions      | Vercel   |
 
 ## Pages
 
@@ -89,9 +89,9 @@ On its own it opens nothing: `anon` has no privileges on either table, so an
 anonymous request gets `permission denied`, and sign-ups are disabled so no new
 account can be made to get around it.
 
-## The one piece of server code
+## The only server-side code
 
-Two small Vercel functions, in `frontend/api/`. They exist because the Geoapify
+Four small Vercel functions, in `frontend/api/`. They exist because the Geoapify
 key must not reach the browser, so it is set in Vercel without a `VITE_` prefix
 and never enters the bundle.
 
